@@ -1,0 +1,14 @@
+Dodane programy:
+	proc_pr
+	proc_s
+	proc_serv1
+
+Dodane dalsie subory:
+	info.txt - Tento subor. Obsahuje zakladne uzitocne informacie.
+	p1.txt - Priklad vstupneho suboru p1.txt.
+	p2.txt - Priklad vstupneho suboru p2.txt.
+
+Kazdy z procesov generuje 2 subory *.err a *.out (napr. proces 'proc_pr' generuje subor 'proc_pr.err' a 'proc_pr.out').
+
+*.err: Obsahuje CHYBOVE spravy napr. "Chybny pocet parametrov programu!".
+*.out: Obsahuje rozne USPESNE spravy, ktore proces vygeneroval za behu napr. "Uspesne som zapisal slovo do rury."
