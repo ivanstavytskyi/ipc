@@ -2,7 +2,7 @@ This task represents the usage os semaphores, virtual memory, socket usage, tcp 
 It contains different .cpp files, each of them corresponding to the specified process, which is runs his own role in this chain of processes.
 At first we have two files p1.txt and p2.txt, we are executing all the process in chain, with main process zadanie, it first raises p1 process and p2 process, also process
 Pr (precompiled process) executes. Process Pr gives the commands to the programs p1 and p2, with signals, when to read one word only from the file and write it to the pipe, which is connected to the Pr process,
-and then going to put this word into the pipe, between p1 and process Pr, and p2 and process Pr. Pr process is the pre compiled program, which is only contains the binary code. Then
+and then going to put this word into the pipe, between p1 and process Pr, and p2 and process Pr. Pr process is the pre compiled program, which is only contains the binary code.
 Then process T executes, and going to read words from the pipe betwenn Pr and T process, Pr transfers word by word to this pipe ro process T. Process T using semaphores,
 to synchronize with next process which is going to execute, process S (also precompiled binary file), so when process T write something to the shared memory which is between T and process S,
 it changes his value to 0, and makes value of semaphore S to the 1, so S process can read from shared memroy this word (after process S read, this word, it changes semaphore conversely,
