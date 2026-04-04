@@ -36,7 +36,7 @@ Processes p1, and p2, executed with the same argument of pipe, where they will f
 
 Each process, p1 and p2, opens its related file ```p1.txt``` or ```p2.txt```. As well sets the private process handler of the signal, to handle signal ```SIGUSR1```, when it will come (further from Pr process). Then when the process finish its preparation, it send the signal to the parent process ```zadanie``` by that designating it state as prepared.
 
-Process Pr gives the commands to the programs p1 and p2, with signals, when to read one word only, from the file and write it to the pipe.
+Process Pr gives the commands to the programs p1 and p2, with signals, when to read the word, from the file and write it to the pipe.
 
 For those who are interested in more detailed communication between processes, I recommend to read the ```documentation.docx``` which includes the detailed scheme of communication.
 
