@@ -1,7 +1,7 @@
 # IPC Project.
 
 > [!NOTE]
-> This project is open-source. It represents most commonly applicapable process-communications concepts. It represents: 
+> This project is open-source. It represents most commonly applicapable process-communications concepts, including: 
 > - semaphores
 > - virtual memory
 > - socket usage
