@@ -1,5 +1,7 @@
 # IPC Project.
 
+<img width="786" height="292" alt="image" src="https://github.com/user-attachments/assets/14f4b748-5c8c-4874-9fec-63a999266f74" />
+
 
 > [!NOTE]
 > This project is open-source. It represents most commonly applicapable process-communications concepts. It represents: 
