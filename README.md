@@ -19,6 +19,7 @@ This project obtains different process related files (some binary, cpp files). T
 
 ## Documentation
 
+> [!TIP]
 > At first we have two files p1.txt and p2.txt. That is the main content which will be transfered across the programm, throughout execution. The main question is how it will be transfered ?
 
 For the transfering of content and synchronization between transfering, is responsible the file ```zadanie.cpp```.
