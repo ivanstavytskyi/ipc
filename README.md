@@ -15,7 +15,7 @@
 <img width="743" height="258" alt="image" src="https://github.com/user-attachments/assets/5435ada9-bc2c-4f78-88fe-4459d16b8e53" />
 
 
-This project obtains different process related files (some binary, cpp files). The purpose of each file, is to perform it's own specific task in this chain of processes communication.
+This project obtains different process related files (some binary, cpp files). The purpose of each, perform it's own specific task in this chain of processes communication.
 
 ## Documentation
 
