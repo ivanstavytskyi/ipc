@@ -32,7 +32,7 @@ At first point, the main process ```zadanie``` executed, as mentioned earlier it
 
 The first it performs, is executes p1 and p2 process, as well as Pr (precompiled process).
 
-Processes p1, and p2, executed with the same argument of pipe, where they plan to further write. The both of them as well needs a little to prepare before it can roughly recieve the signal from Pr process.
+Processes p1, and p2, executed with the same argument of pipe, where they will further write. The both of them as well needs a little to prepare before it can roughly recieve the signal from Pr process.
 
 Each process, p1 and p2, opens its related file ```p1.txt``` or ```p2.txt```. As well sets the private process handler of the signal, to handle signal ```SIGUSR1```, when it will come (further from Pr process). Then when the process finish its preparation, it send the signal to the parent process ```zadanie``` by that designating it state as prepared.
 
