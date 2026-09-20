@@ -1,64 +1,118 @@
-# IPC Project.
+<div align="center">
 
-> [!NOTE]
-> This project is open-source. It represents most commonly applicapable process-communications concepts, including: 
-> - semaphores
-> - virtual memory
-> - socket usage
-> - tcp connection
-> - udp connection
-> - pipes
-> - signals.
+# IPC pipeline
 
-<br>
+**Eight cooperating Linux processes move words from two text files to a final output file — through pipes, signals, System V shared memory and semaphores, then TCP and UDP sockets. One coordinator forks the chain, waits for every process to report ready, and tears the IPC objects down at the end.**
 
-<img width="743" height="258" alt="image" src="https://github.com/user-attachments/assets/5435ada9-bc2c-4f78-88fe-4459d16b8e53" />
+![C++](https://img.shields.io/badge/C%2B%2B-POSIX%20%2F%20System%20V-00599C?logo=cplusplus&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-only-FCC624?logo=linux&logoColor=black)
+![Build: make](https://img.shields.io/badge/build-make-427819?logo=gnu&logoColor=white)
+![Processes](https://img.shields.io/badge/processes-8-6DB33F)
+[![License: MIT](https://img.shields.io/github/license/ivanstavytskyi/ipc?color=blue)](LICENSE)
 
+[Quick start](#quick-start) · [How it works](#how-it-works) · [Processes](#processes) · [IPC mechanisms](#ipc-mechanisms) · [Layout](#repository-layout)
 
-This project obtains different process related files (some binary, cpp files). The purpose of each, perform it's own specific task in this chain of processes communication.
+</div>
 
-## Documentation
+---
 
-> [!TIP]
-> At first we have two files p1.txt and p2.txt. That is the main content which will be transfered across the programm, throughout execution. The main question is how it will be transfered ?
+Each word in `p1.txt` and `p2.txt` travels the same route: a producer reads it on a signal, writes it into a pipe, a scheduler forwards it to a second pipe, two hops of shared memory guarded by semaphores carry it across process boundaries, and finally it is sent over TCP to a relay that forwards it over UDP to the receiver, which appends it to `serv2.txt`.
 
-For the transfering of content and synchronization between transfering, is responsible the file ```zadanie.cpp```.
+<p align="center">
+  <img src="docs/media/communication-chain.png" alt="Communication chain: P1 and P2 write to pipe R1 on signals from Pr; Pr forwards to pipe R2; T and S exchange words through shared memory SM1 and SM2 guarded by semaphores; D sends over TCP to Serv1, which relays over UDP to Serv2 writing serv2.txt" width="760">
+  <br>
+  <sub>Double-bordered boxes (<code>Pr</code>, <code>S</code>, <code>Serv1</code>) are the prebuilt binaries; the rest is built from source.</sub>
+</p>
 
-Inside of it, is written tha main logic, related to the communication between processes.
+## Quick start
 
-## The transfer chain
+Linux with `g++` and `make`. Six processes are built from source; `proc_pr`, `proc_s` and `proc_serv1` ship as prebuilt Linux binaries in the repository root.
 
-At first point, the main process ```zadanie``` executed, as mentioned earlier its responsible for execution and synsynchronization between processes.
+```bash
+git clone https://github.com/ivanstavytskyi/ipc.git
+cd ipc
+make                      # builds zadanie, proc_p1, proc_p2, proc_t, proc_d, proc_serv2
+./zadanie 5000 5001       # <TCP port for Serv1> <UDP port for Serv2>
+cat serv2.txt             # every word from p1.txt and p2.txt, one per line
+make clean                # removes binaries, *.out, *.err and serv2.txt
+```
 
-The first it performs, is executes p1 and p2 process, as well as Pr (precompiled process).
+Pick any two free ports. The coordinator prints each fork and each readiness signal it receives; the processes log what they read and write, so the whole hand-off is visible in the terminal.
 
-Processes p1, and p2, executed with the same argument of pipe, where they will further write. The both of them as well needs a little to prepare before it can roughly recieve the signal from Pr process.
+<!-- Demo: record a terminal GIF of `make && ./zadanie 5000 5001 && cat serv2.txt` and add it as docs/media/run.gif -->
 
-Each process, p1 and p2, opens its related file ```p1.txt``` or ```p2.txt```. As well sets the private process handler of the signal, to handle signal ```SIGUSR1```, when it will come (further from Pr process). Then when the process finish its preparation, it send the signal to the parent process ```zadanie``` by that designating it state as prepared.
+## How it works
 
-Process Pr gives the commands to the programs p1 and p2, with signals, when to read the word, from the file and write it to the pipe.
+<p align="center">
+  <img src="docs/media/diagram.png" alt="Process graph: coordinator forks producers, IPC processing chain and network output" width="800">
+</p>
 
-For those who are interested in more detailed communication between processes, I recommend to read the ```documentation.docx``` which includes the detailed scheme of communication.
+`zadanie` is the coordinator. On start it:
 
-TL;DR
+1. Creates two anonymous pipes (`R1`, `R2`), two 151-byte shared-memory segments (`SM1`, `SM2`) and two semaphore sets (`S1`, `S2`), each with two semaphores initialised to `1` and `0` — a hand-off pair for writer and reader.
+2. Installs a `SIGUSR1` handler that counts readiness reports.
+3. Forks and `execl`s the children **in dependency order** — `P1`, `P2`, `Pr`, `T`, `S`, `Serv1`, `Serv2`, `D` — passing pipe descriptors, IPC ids and ports as command-line arguments. After each fork it blocks in `pause()` until that child sends `SIGUSR1`, then gives it a few seconds to settle.
+4. Once all eight have reported ready and the chain has drained, it closes the pipes, sends `SIGTERM` to every child, `wait()`s for them and removes the shared-memory segments and semaphore sets with `IPC_RMID`.
 
-Then process T executes by ```zadanie```, and going to read words from the pipe betwenn Pr and T process, Pr transfers word by word to this pipe to process T.
+Every child does the same first thing: set up, then `kill(getppid(), SIGUSR1)`. That single convention is what lets the coordinator start the chain deterministically instead of racing.
 
-Process T using semaphores, to synchronize with next ongoing process execution, process S ( precompiled binary).
+A step-by-step walkthrough of every hand-off, with the full communication scheme, is in [`documentation.docx`](documentation.docx).
 
-So when process T write something to the shared memory which is between T and process S, it changes his value to 0, and makes value of semaphore S to the 1.
+## Processes
 
-So process S can read from shared memroy this word (after process S read, this word, it changes semaphore conversely,
-and then process T clears the shared memory, and writes new word and so on).
+| Process | Source | Role | In | Out |
+|---|---|---|---|---|
+| `zadanie` | `zadanie.cpp` | Coordinator: creates IPC objects, forks the chain, waits for readiness, cleans up | ports | — |
+| `proc_p1` | `proc_p1.cpp` | Producer: on every `SIGUSR1` from `Pr` reads one line (≤150 chars) from `p1.txt` | `p1.txt`, signal | pipe `R1` |
+| `proc_p2` | `proc_p2.cpp` | Producer: same for `p2.txt` | `p2.txt`, signal | pipe `R1` |
+| `proc_pr` | *prebuilt binary* | Scheduler: alternately signals `P1` and `P2`, forwards words from `R1` to `R2` | pipe `R1` | pipe `R2`, signals |
+| `proc_t` | `proc_t.cpp` | Reads a word from `R2`, takes `S1[0]`, copies it into `SM1`, releases `S1[1]` | pipe `R2` | `SM1` |
+| `proc_s` | *prebuilt binary* | Copies each word from `SM1` to `SM2`, driven by `S1` / `S2` | `SM1` | `SM2` |
+| `proc_serv1` | *prebuilt binary* | TCP server on `port1`; relays every received word over UDP to `port2` | TCP | UDP |
+| `proc_serv2` | `proc_serv2.cpp` | UDP receiver bound to `127.0.0.1:port2`; appends each datagram as a line to `serv2.txt` | UDP | `serv2.txt` |
+| `proc_d` | `proc_d.cpp` | Waits on `S2[1]`, reads `SM2`, sends the 151-byte buffer over TCP to `Serv1`; an empty word ends the stream | `SM2` | TCP |
 
-Process S (precompiled process) connected with process D, using shared memory to transfer data between, and semaphores to synchronize.
-So process S reads word from his shared memory between previous process, and transfers this word to another shared memory of process D, using semaphore.
+The prebuilt binaries also write `<name>.out` and `<name>.err` logs next to themselves (see `info.txt`).
 
-So when process S write the word to shared memory,
-it makes his semaphore to 0, and semaphore of process D comes to 1. Process D reads the word form shared memory and transfers this word to the process ```Serv1``` via TCP connection.
+## IPC mechanisms
 
-Process Serv1 then when recieve this
-word from tcp connection, from process D, transfers this word connecting to udp port, to Serv2 process, and then when process Serv2 recieves this word by udp connection, it writes this word
-to the file Serv2.txt.
+| Mechanism | Where | Calls |
+|---|---|---|
+| **Anonymous pipes** | `P1`/`P2` → `Pr` (`R1`), `Pr` → `T` (`R2`). Descriptors are inherited through `fork` and passed as argv | `pipe`, `read`, `write` |
+| **Signals** | Readiness: every child → coordinator (`SIGUSR1`, counted in a `sig_atomic_t`). Scheduling: `Pr` → `P1`/`P2` (`SIGUSR1` = “emit the next word”). Shutdown: coordinator → children (`SIGTERM`, handled to `shmdt` before exit) | `sigaction` with `SA_SIGINFO`, `kill`, `pause` |
+| **Shared memory** | `SM1` between `T` and `S`, `SM2` between `S` and `D`; 151 bytes = one word + terminator | `shmget(IPC_PRIVATE)`, `shmat`, `shmdt`, `shmctl(IPC_RMID)` |
+| **Semaphores** | One two-element set per segment: `[0]` guards the writer, `[1]` wakes the reader — a strict alternation so a word is never overwritten before it is read | `semget`, `semctl(SETVAL)`, `semop` |
+| **TCP** | `D` connects to `Serv1` on `127.0.0.1:port1` and streams fixed 151-byte records | `socket(SOCK_STREAM)`, `connect`, `write` |
+| **UDP** | `Serv1` sends each word as a datagram to `Serv2` on `127.0.0.1:port2` | `socket(SOCK_DGRAM)`, `bind`, `recvfrom` |
+| **fork / exec** | Coordinator spawns all children with `fork` + `execl`, passing state only through argv, inherited descriptors and IPC ids | `fork`, `execl`, `wait` |
 
-And so on, the words are keep transfering between the chain of communcation, until each words are transfered to the file serv2.txt.
+## Repository layout
+
+```text
+ipc/
+├── LICENSE            MIT
+├── Makefile           builds the six local binaries; `make clean` removes outputs
+├── zadanie.cpp        coordinator
+├── proc_p1.cpp        producer for p1.txt
+├── proc_p2.cpp        producer for p2.txt
+├── proc_t.cpp         pipe R2 → shared memory SM1
+├── proc_d.cpp         shared memory SM2 → TCP
+├── proc_serv2.cpp     UDP → serv2.txt
+├── proc_pr            prebuilt: scheduler between P1/P2 and T
+├── proc_s             prebuilt: shared memory SM1 → SM2
+├── proc_serv1         prebuilt: TCP → UDP relay
+├── p1.txt, p2.txt     sample input, one word per line
+├── info.txt           notes on the prebuilt binaries and their *.out / *.err logs
+├── documentation.docx detailed communication scheme and walkthrough
+└── docs/media/        communication chain and process graph used in this README
+```
+
+## Notes
+
+- Everything binds to `127.0.0.1`; nothing is exposed on the network.
+- IPC objects are created with `IPC_PRIVATE` and their ids are passed to children as arguments, so nothing is keyed on a filesystem path. If a run is interrupted before cleanup, remove leftovers with `ipcs` / `ipcrm`.
+- The coordinator uses fixed sleeps between forks to give each stage time to start. That keeps the assignment simple; a production design would replace the sleeps with the readiness signals alone.
+
+## License
+
+[MIT](LICENSE) © Ivan Stavytskyi
